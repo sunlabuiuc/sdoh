@@ -1,0 +1,93 @@
+# @meta {author: 'Paul Landes'}
+# @meta {desc: 'full transformer last layer output', date: '2024-11-19'}
+
+
+## API Defaults
+#
+deepnlp_default:
+  # longest word piece length for MIMIC: 227
+  word_piece_token_length: 227
+
+
+## Transformer
+#
+transformer_trainable_embedding:
+  output: last_hidden_state
+
+
+## Vectorizer
+#
+language_vectorizer_manager:
+  token_length: ${deepnlp_default:word_piece_token_length}
+
+
+# add the expander features via manager
+vectorizer_manager_set:
+  names: >-
+    list:
+      language_vectorizer_manager,
+      classify_label_vectorizer_manager,
+      transformer_expander_feature_manager
+
+
+## Batch
+#
+sdoh_batch_mappings:
+  manager_mappings:
+    - vectorizer_manager_name: language_vectorizer_manager
+      fields:
+        - attr: cuidescs
+          feature_id: cuidesc
+          is_agg: true
+          attr_access: doc
+        - attr: cuidescs_expander
+          feature_id: cuidesc_expander
+          is_agg: true
+          attr_access: doc
+  batch_feature_mapping_adds:
+    - 'dataclass(zensols.deeplearn.batch.BatchFeatureMapping): classify_label_batch_mappings'
+    - 'dataclass(zensols.deeplearn.batch.BatchFeatureMapping): lang_batch_mappings'
+    - 'dataclass(zensols.deeplearn.batch.BatchFeatureMapping): transformer_expander_batch_mapping'
+  field_keep:
+    - labels
+    - counts
+    - stats
+    - enums
+    - dependencies
+    - cuidescs
+    - cuidescs_expander
+    - transformer_enum_expander
+    - transformer_dep_expander
+    - ${sdoh_default:embedding}
+
+batch_dir_stash:
+  groups:
+    - [labels]
+    - [enums, stats, counts, dependencies]
+    - [cuidescs, cuidescs_expander]
+    - [transformer_enum_expander, transformer_dep_expander]
+    - [transformer_trainable_embedding]
+
+
+
+## Model
+#
+convolution_net_settings:
+  class_name: zensols.deepnlp.layer.DeepConvolution1dNetworkSettings
+  # gpu layer configuration
+  torch_config: 'instance: ${deeplearn_default:layer_torch_config}'
+  # sets the dropout for the network
+  dropout: 0.3
+  # no activation used in this set of layers
+  activation: relu
+  # conv params
+  token_kernel: 6
+  stride: 2
+  padding: 1
+  pool_stride: 2
+  pool_token_kernel: 2
+  pool_padding: 0
+  repeats: 2
+
+classify_net_settings:
+  convolution_settings: 'instance: convolution_net_settings'

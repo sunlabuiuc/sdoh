@@ -1,0 +1,86 @@
+# @meta {author: 'Paul Landes'}
+# @meta {desc: 'CUI description embedding', date: '2024-11-19'}
+
+
+## Import
+#
+sdoh_cuidesc_sec_imp:
+  import:
+    entlink_imp:
+      config_file: 'resource(zensols.mednlp): resources/entlink.conf'
+    # eval_imp:
+    #   type: dictionary
+    #   source: |
+    #     self.parent.parent.parent.remove_sections.append('sdoh_cuidesc_sec_imp')
+
+
+## Natural language
+#
+mednlp_combine_medcat_doc_parser:
+  token_decorators: "instance: list: mednlp_linker_decorator"
+
+
+## Transformer
+#
+sdoh_docemb_transformer_resource:
+  class_name: zensols.deepnlp.transformer.TransformerResource
+  torch_config: 'instance: gpu_torch_config'
+  #model_id: 'bert-base-cased'
+  #model_id: 'roberta-base'
+  #model_id: sentence-transformers/all-MiniLM-L6-v2
+  #model_id: 'sentence-transformers/all-mpnet-base-v2'
+  model_id: pritamdeka/S-PubMedBert-MS-MARCO
+  #model_id: UFNLP/gatortron-base
+  cased: true
+  cache: false
+  trainable: false
+  args:
+    local_files_only: ${deepnlp_default:transformer_local_files_only}
+
+sdoh_docemb_transformer_tokenizer:
+  class_name: zensols.deepnlp.transformer.TransformerDocumentTokenizer
+  resource: 'instance: sdoh_docemb_transformer_resource'
+  word_piece_token_length: '${deepnlp_default:word_piece_token_length}'
+
+sdoh_docemb_transformer_embedding:
+  class_name: zensols.deepnlp.transformer.TransformerEmbedding
+  tokenizer: 'instance: sdoh_docemb_transformer_tokenizer'
+  #output: last_hidden_state
+
+sdoh_docemb_transformer_feature_vectorizer:
+  class_name: zensols.deepnlp.transformer.TransformerEmbeddingFeatureVectorizer
+  feature_id: 'sdoh_docemb_transformer'
+  fold_method: 'concat_tokens'
+  embed_model: 'instance: sdoh_docemb_transformer_embedding'
+  encode_transformed: false
+  encode_tokenized: false
+
+
+## Model
+#
+sdoh_docemb_transformer_embedding_layer:
+  class_name: zensols.deepnlp.transformer.TransformerEmbeddingLayer
+  embed_model: 'instance: sdoh_docemb_transformer_embedding'
+  feature_vectorizer_manager: 'instance: language_vectorizer_manager'
+
+
+## Vectorizer
+#
+sdoh_cuidesc_feature_vectorizer:
+  class_name: zensols.deepnlp.transformer.DocumentEmbeddingFeatureVectorizer
+  feature_id: 'cuidesc'
+  fold_method: concat_tokens
+  embed_model: 'instance: sdoh_docemb_transformer_embedding'
+  encode_transformed: false
+  token_pattern: '{pref_name_}:{definition_}'
+  token_feature_ids: 'set: pref_name_, definition_'
+  encode_tokenized: false
+
+sdoh_cuidesc_expander_vectorizer:
+  class_name: zensols.deepnlp.transformer.TransformerExpanderFeatureVectorizer
+  feature_id: 'cuidesc_expander'
+  fold_method: concat_tokens
+  embed_model: 'instance: ${sdoh_default:embedding}'
+  delegate_feature_ids:
+    - language_vectorizer_manager.cuidesc
+  encode_transformed: false

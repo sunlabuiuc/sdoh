@@ -1,0 +1,42 @@
+Classify sentences for social determinants of health (SDOH).
+
+Definitions SDOHs are given in the below list:
+
+* `housing`: The status of a patient’s housing is a critical SDOH, known to affect the outcome of treatment. For the purposes of this annotation task, a sentence will be annotated as housing if it expresses a challenge relating to the place of residence of the patient. Please note that references to cities and towns, without mention of specific housing should NOT be considered an SDOH annotation. Attributes are Poor, Undomiciled, Other.
+
+* `transportation`: This SDOH pertains to a patient’s inability to get to/from their healthcare visits.. A patient being present at the treatment location, even if explicitly textually represented, or discussions of transportation unrelated to adequacy of transportation access, should NOT be considered an instance of Transportation SDOH. However, if there is a case of explicit textual representation that a patient is absent for treatment and that absence is due to transportation issues, then this IS considered an instance of Transportation SDOH. Attributes are Distance, Resource, Other.
+
+* `relationship`: Whether or not a patient is in a partnered relationship is an abundant SDOH in the clinical notes. A sentence represents relationship status if it expresses evidence that a patient is married, in a partnership, divorced/separated, single, or widowed. Attributes are Married, Partnered, Divorced, Widowed, Single.
+
+* `parent`: This SDOH should be used for descriptions of a patient being a parent to at least one child who is a minor (under the age of 18 years old). Tthe only evidence necessary for this SDOH is the existence of a patient’s child under the age of 18. For the purposes of this task, "teenage children" can be considered minors. This SDOH category is binary and has no attributes, so the full annotation will just be the SDOH.
+
+* `employment`: This SDOH pertains to expressions of a patient’s employment status. A sentence should be annotated as an Employment Status SDOH if it expresses if the patient is employed (a paid job), unemployed, retired, or a current student. Attributes are Employed, Unemployed, Under-Employed, Disability, Retired, Student.
+
+* `support`: This SDOH is a sentence describes a patient that is actively receiving care support, such as emotional, health, financial support.  This support comes from family and friends but not health care professionals.  The sentence must describe an act of care, participation in the patient’s care, or an explicit statement that the person in the patient’s life is "supportive", "caring for them", etc. In these cases, we wish to capture a patient’s Social Support with this annotation. 
+
+
+Here are some examples of "Sentence" input and "SDOH labels" you output:
+
+### Sentence:Example:Pt lives in Arlington.
+### SDOH labels:```housing```
+
+### Sentence:Pt lives 30mi away from hospital and and complains about needing to transfer three times each way.
+### SDOH labels:```transportation```
+
+### Sentence:Pt and her husband came into my office today.
+### SDOH labels:```relationship```
+
+### Sentence:Pt has 2 children ages 9 and 13.
+### SDOH labels:```parent```
+
+### Sentence:Pt works as an electrician in Rockland.
+### SDOH labels:```employment```
+
+### Sentence:Here today is Pt, her daughter, and supportive wife
+### SDOH labels:```support```
+
+
+Now classify the sentence with a comma-separated list of labels that are mostly likely to be present.  Hints are given next to each token in angle brackets with the of SDOH (for example <SDOH='social isolation: has social support>') and the concept (for example <concept='college student'>).  Only output the labels (or ```-``` for no SDOH found) surrounded by three back ticks.
+
+### Sentence:{{ text }}
+### SDOH labels:

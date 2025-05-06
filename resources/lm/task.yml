@@ -1,0 +1,153 @@
+#@meta {author: 'landes'}
+#@meta {desc: 'language model task', date: '2025-01-08'}
+
+
+## Overrides
+#
+lmtask_model_generate_args:
+  max_new_tokens: 512
+
+lmtask_task_factory:
+  # use tasks in this config rather than the lmtask resource lib
+  _task_pattern: >-
+    eval({'import': ['re']}): re.compile('^sdoh_lm_task_(.+)')
+
+
+## Few shot
+#
+sdoh_lm_fewshot_dataset_factory:
+  class_name: zensols.sdoh.lm.DatasetFactory
+  source: 'instance: feature_stash'
+  task: 'instance: sdoh_lm_task_fewshot_sdoh'
+  feature_hint_type: ${sdoh_lm_default:feature_hint_type}
+  temporary_dir: 'path: ${sdoh_lm_default:data_dir}/fewshot'
+  swap_task_templates: true
+
+sdoh_lm_fewshot_cache_stash:
+  class_name: zensols.db.sqlite.SqliteDbStash
+  path: >-
+    call({'param': {'method': 'get_temporary_file', 'name': 'ds.sqlite3'}}):
+      sdoh_lm_fewshot_factory_stash
+
+sdoh_lm_fewshot_factory_stash:
+  class_name: zensols.sdoh.lm.ResponseStash
+  temporary_dir: ${sdoh_lm_fewshot_dataset_factory:temporary_dir}
+  factory: 'instance: sdoh_lm_fewshot_dataset_factory'
+
+sdoh_lm_fewshot_stash:
+  class_name: zensols.multi.MultiProcessRobustStash
+  delegate: 'instance: sdoh_lm_fewshot_cache_stash'
+  factory: 'instance: sdoh_lm_fewshot_factory_stash'
+  workers: ${sdoh_lm_default:workers}
+
+sdoh_lm_fewshot_inferencer:
+  class_name: zensols.sdoh.lm.ModelInferencer
+  labels: >-
+    call({'param': {'method': 'get_labels'}}): dataframe_stash
+  factory: 'instance: sdoh_lm_fewshot_dataset_factory'
+  stash: 'instance: sdoh_lm_fewshot_stash'
+  data_name: fewshot-${sdoh_default:label}
+  data_desc: 'Few-shot on {model_desc} checkpoint'
+  temporary_dir: ${sdoh_lm_fewshot_dataset_factory:temporary_dir}
+  metrics_dir: 'path: ${sdoh_default:shared_data_dir}/metrics'
+
+sdoh_lm_task_fewshot_sdoh:
+  class_name: zensols.lmtask.instruct.InstructTask
+  description: 'classify SDOH tasks'
+  request_class: 'class: zensols.lmtask.instruct.InstructTaskRequest'
+  response_class: 'class: zensols.lmtask.task.TaskResponse'
+  generator: 'alias: sdoh_lm_default:fewshot_generator'
+  resource: 'alias: sdoh_lm_default:fewshot_resource'
+  role: 'You are a social determinants of health (SDOH) classifier.'
+  inference_template: 'resource(zensols.lmtask): resources/lm/few-shot-${sdoh_lm_default:feature_hint_type}.j2'
+  train_template: null
+
+
+## Train
+#
+lmtask_trainer_default:
+  trainer_name: 'lmtask_trainer_hf'
+
+lmtask_trainer_hf_peft:
+  task_type: 'SEQ_CLS'
+
+lmtask_trainer_hf:
+  source: 'instance:  sdoh_lm_train_dataset_factory'
+
+lmtask_trainer_hf_training_arguments:
+  num_train_epochs: 3
+  output_dir: >-
+    eval({'import': ['zensols.lmtask.generate as g']}):
+      g.GeneratorResource.get_model_path(
+          '${lmtask_trainer_default:source_model}',
+          Path('${sdoh_lm_default:data_dir}/sft/model'))
+
+sdoh_lm_train_dataset_factory:
+  class_name: zensols.sdoh.lm.SplitDatasetFactory
+  split_stash: 'instance: feature_stash'
+  task: 'instance: sdoh_lm_task_sft_sdoh'
+  load_args:
+    split: train
+  feature_hint_type: ${sdoh_lm_default:feature_hint_type}
+  temporary_dir: 'path: ${sdoh_lm_default:data_dir}/sft'
+
+
+## Trained inference model
+## Partially defined in specific model i.e. `llama.yml`)
+#
+sdoh_lm_sft_resource:
+  model_id: "${lmtask_trainer_hf_training_arguments:output_dir} / 'checkpoint'"
+
+sdoh_lm_sft_generator:
+  resource: 'instance: sdoh_lm_sft_resource'
+
+sdoh_lm_task_sft_sdoh:
+  class_name: zensols.lmtask.instruct.InstructTask
+  description: 'classify SDOH tasks'
+  request_class: 'class: zensols.lmtask.instruct.InstructTaskRequest'
+  response_class: 'class: zensols.lmtask.task.TaskResponse'
+  role: 'You are a social determinants of health (SDOH) classifier.'
+  generator: 'instance: sdoh_lm_sft_generator'
+  inference_template: 'resource(zensols.lmtask): resources/lm/inference-${sdoh_lm_default:feature_hint_type}.j2'
+  train_template: 'resource(zensols.lmtask): resources/lm/train-${sdoh_lm_default:feature_hint_type}.j2'
+
+
+## Test on trained model
+#
+sdoh_lm_test_dataset_factory:
+  class_name: zensols.sdoh.lm.SplitDatasetFactory
+  split_stash: 'instance: feature_stash'
+  task: 'instance: sdoh_lm_task_sft_sdoh'
+  load_args:
+    split: test
+  feature_hint_type: ${sdoh_lm_default:feature_hint_type}
+  temporary_dir: 'path: ${sdoh_lm_default:data_dir}/test'
+  swap_task_templates: true
+
+sdoh_lm_test_cache_stash:
+  class_name: zensols.db.sqlite.SqliteDbStash
+  path: >-
+    call({'param': {'method': 'get_temporary_file', 'name': 'ds.sqlite3'}}):
+      sdoh_lm_test_factory_stash
+
+sdoh_lm_test_factory_stash:
+  class_name: zensols.sdoh.lm.ResponseStash
+  temporary_dir: ${sdoh_lm_test_dataset_factory:temporary_dir}
+  factory: 'instance: sdoh_lm_test_dataset_factory'
+
+sdoh_lm_test_stash:
+  class_name: zensols.multi.MultiProcessRobustStash
+  delegate: 'instance: sdoh_lm_test_cache_stash'
+  factory: 'instance: sdoh_lm_test_factory_stash'
+  workers: ${sdoh_lm_default:workers}
+
+sdoh_lm_test_inferencer:
+  class_name: zensols.sdoh.lm.ModelInferencer
+  factory: 'instance: sdoh_lm_test_dataset_factory'
+  stash: 'instance: sdoh_lm_test_stash'
+  labels: >-
+    call({'param': {'method': 'get_labels'}}): dataframe_stash
+  data_name: test-${sdoh_default:label}
+  data_desc: 'Test dataset on {model_desc} checkpoint'
+  temporary_dir: ${sdoh_lm_test_dataset_factory:temporary_dir}
+  metrics_dir: 'path: ${sdoh_default:shared_data_dir}/metrics'

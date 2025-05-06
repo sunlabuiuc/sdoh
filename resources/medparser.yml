@@ -1,0 +1,61 @@
+# @meta {author: 'Paul Landes'}
+# @meta {desc: 'adds medical features (CUIs and NER)', date: '2024-11-11'}
+
+
+## Entity linked definitions
+#
+# import entity linked config if defined in the default section
+sdoh_medparser_sec_imp:
+  cuidesc_imp:
+    type: condyaml
+    config_file: 'resource(zensols.sdoh): resources/cuidesc.yml'
+  import:
+    eval_imp:
+      type: dictionary
+      source: |
+        from pathlib import Path
+        for i, c in enumerate(self._get_children('use_entlink', 'sdoh_default')):
+          if c.get_option_boolean('use_entlink', 'sdoh_default'):
+             self.parent._copy_import_section(['sdoh_medparser_sec_imp.cuidesc_imp'], self)
+             break
+        self.parent.parent.remove_sections.append('sdoh_medparser_sec_imp')
+
+
+## Configure medical parsing
+#
+# keep both features by mapping the medical NER to a new feature ID; (test with
+# "Selenium County")
+mednlp_combine_biomed_doc_parser:
+  yield_features: 'eval: ()'
+  map_features:
+    - [ent, medent, 0]
+    - [ent_, medent_, null]
+    - [ent_iob, medent_iob, 0]
+    - [ent_iob_, medent_iob_, null]
+
+# both parsers create documents to be merged later
+mednlp_medcat_doc_parser:
+  doc_class: 'class: zensols.deepnlp.classify.multilabel.MultiLabelFeatureDocument'
+
+mednlp_biomed_doc_parser:
+  doc_class: 'class: zensols.deepnlp.classify.multilabel.MultiLabelFeatureDocument'
+
+# declare to keep all the same features we want for the vectorizer manager
+mednlp_combine_biomed_medcat_doc_parser:
+  token_feature_ids: >-
+    eval({'import': ['zensols.nlp as n', 'zensols.mednlp as m']}):
+      (n.FeatureToken.FEATURE_IDS | m.MedicalFeatureToken.FEATURE_IDS | {'medent'})
+
+
+## Vectorizer
+#
+# set the top level combiner as the parser used by the vectorizer
+language_vectorizer_manager:
+  doc_parser: 'instance: mednlp_combine_biomed_medcat_doc_parser'
+  token_feature_ids: ${mednlp_combine_biomed_medcat_doc_parser:token_feature_ids}
+  configured_spacy_vectorizers: >-
+    instance: tuple:
+      ner_spacy_feature_vectorizer,
+      dep_spacy_feature_vectorizer,
+      pos_spacy_feature_vectorizer,
+      medent_spacy_feature_vectorizer

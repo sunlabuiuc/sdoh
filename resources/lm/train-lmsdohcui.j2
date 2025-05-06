@@ -1,0 +1,22 @@
+Classify sentences for social determinants of health (SDOH).
+
+Definitions SDOHs are given with labels in back ticks:
+
+* `housing`: The status of a patient’s housing is a critical SDOH, known to affect the outcome of treatment.
+
+* `transportation`: This SDOH pertains to a patient’s inability to get to/from their healthcare visits.
+
+* `relationship`: Whether or not a patient is in a partnered relationship is an abundant SDOH in the clinical notes.
+
+* `parent`: This SDOH should be used for descriptions of a patient being a parent to at least one child who is a minor (under the age of 18 years old).
+
+* `employment`: This SDOH pertains to expressions of a patient’s employment status. A sentence should be annotated as an Employment Status SDOH if it expresses if the patient is employed (a paid job), unemployed, retired, or a current student.
+
+* `support`: This SDOH is a sentence describes a patient that is actively receiving care support, such as emotional, health, financial support.  This support comes from family and friends but not health care professionals.
+
+* `-`: If no SDOH is found.
+
+Now classify the sentence with a comma-separated list of labels that are mostly likely to be present.  Hints are given next to each token in angle brackets with the of SDOH (for example <SDOH='social isolation: has social support>') and the concept (for example <concept='college student'>).  Only output the labels (or ```-``` for no SDOH found) surrounded by three back ticks.
+
+### Sentence: {{ text }}
+### SDOH labels: ```{{ labels }}```

@@ -1,0 +1,33 @@
+# @meta {author: 'Paul Landes'}
+# @meta {desc: 'configuration for pooler configured transformers', date: '2024-11-20'}
+
+
+## Batch
+#
+# batch mappings from attribute to feature IDs and which to use from resource libs
+sdoh_batch_mappings:
+  label_attribute_name: labels
+  batch_feature_mapping_adds:
+    - 'dataclass(zensols.deeplearn.batch.BatchFeatureMapping): classify_label_batch_mappings'
+    - 'dataclass(zensols.deeplearn.batch.BatchFeatureMapping): lang_batch_mappings'
+  field_keep:
+    - labels
+    - counts
+    - stats
+    - enums
+    - dependencies
+    - transformer_trainable_embedding
+
+batch_dir_stash:
+  groups:
+    - [labels]
+    - [enums, stats, counts, dependencies]
+    - [transformer_trainable_embedding]
+
+batch_stash:
+  batch_feature_mappings: 'dataclass(zensols.deeplearn.batch.ConfigBatchFeatureMapping): sdoh_batch_mappings'
+  decoded_attributes:
+    - labels
+    - enums
+    - dependencies
+    - ${sdoh_default:embedding}

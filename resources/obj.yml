@@ -1,0 +1,116 @@
+#@meta {desc: 'application config', date: '2024-09-26'}
+#@meta {doc: 'used as the last config; so overwrites everything'}
+
+
+## Natural language parsing
+#
+# override for creating instances of a class that have an attribute for the
+# label of the text classification
+doc_parser:
+  components: >-
+    instance: list: mednlp_pyrush_component, mimic_component, mimic_tokenizer_component
+
+
+## Install the corpus
+#
+# declare resources to be downloaded
+feature_resource:
+  url: >-
+    eval: f'file://{Path("${default:root_dir}").expanduser().absolute()}/download/annotation-dataset-of-social-determinants-of-health-from-mimic-iii-clinical-care-database-1.0.1.zip'
+
+
+## Feature creation (synthetic sentences)
+#
+# massages the corpora into a usable dataframe (only code in this project)
+dataframe_stash:
+  class_name: zensols.sdoh.corpus.SdohCorpusStash
+  dataframe_path: 'path: ${default:data_dir}/feature/${sdoh_default:label}-dataframe-stash.dat'
+  split_col: ${sdoh_default:label}
+  mimic_corpus_file: SDOH_MIMICIII_physio_release.csv
+  mimic_corpus_columns: [transportation, housing, relationship, employment, support, parent]
+  none_label: "eval({'import': ['zensols.nlp as n']}): n.FeatureToken.NONE"
+  synthetic_files:
+    - ManuallyAnnotatedSyntheticSentences.csv
+
+# the stash of extracted language features in child processes for SpaCy parsing
+feature_factory_stash:
+  text_column: 'text'
+  workers: 2
+
+# stratified mult-label key splits
+feature_split_key_container:
+  key_path: 'path: ${deepnlp_default:corpus_dir}/${sdoh_default:label}-row-ids'
+  distribution:
+    train: 0.6
+    test: 0.2
+    validation: 0.2
+  # optionally print stratified labesl
+  stratified_write: true
+
+
+## Transformer
+#
+transformer_trainable_resource:
+  model_id: ${sdoh_default:model_id}
+  tokenizer_args:
+    add_prefix_space: True
+
+
+## Vectorization
+#
+# used for full last output layer (fulltranout=true)
+enum_feature_vectorizer:
+  decoded_feature_ids: 'set: tag, dep, ent, medent, sdoh_'
+  #decoded_feature_ids: 'set: tag, dep, ent, medent'
+  string_symbol_feature_ids: 'set: sdoh_'
+
+# used for pooler output (fulltranout=false)
+# count vectorizer features; all: tag, dep, ent, medent, sdoh_
+# best: tag, dep, ent, medent
+count_feature_vectorizer:
+  decoded_feature_ids: 'set: tag, dep, ent, medent'
+#  decoded_feature_ids: 'set: sdoh_'
+  string_symbol_feature_ids: 'set: sdoh_'
+
+
+## Batch
+#
+batch_stash:
+  condition:
+    if: 'eval: ${sdoh_default:fulltranout}'
+    then:
+      decoded_attributes:
+        - labels
+        - cuidescs_expander
+        - transformer_enum_expander
+#        - transformer_dep_expander
+        - ${sdoh_default:embedding}
+    else:
+      decoded_attributes:
+        - labels
+        - counts
+        - ${sdoh_default:embedding}
+  workers: 2
+
+
+## Model
+#
+facade:
+  class_name: zensols.sdoh.facade.SdohModelFacade
+
+classify_net_settings:
+  embedding_layer: 'instance: ${sdoh_default:embedding}_layer'
+  # embedding_layer: >-
+  #   instance: list:
+  #     ${sdoh_default:embedding}_layer,
+  #     sdoh_docemb_transformer_embedding_layer
+
+model_settings:
+  #model_name: 'sdoh: ${sdoh_default:model_id}'
+  learning_rate: 'eval: 2.5e-5'
+  epochs: 40
+  criterion_class_name: torch.nn.BCEWithLogitsLoss
+  scheduler_class_name: torch.optim.lr_scheduler.ReduceLROnPlateau
+  scheduler_params:
+    patience: 8
+    factor: 0.00001

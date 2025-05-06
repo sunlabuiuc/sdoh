@@ -1,0 +1,33 @@
+#@meta {desc: "llama model override config", date: "2025-02-09"}
+
+
+## Defaults
+#
+sdoh_lm_default:
+  fewshot_generator: lmtask_llama_instruct_generator
+  fewshot_resource: lmtask_llama_instruct_resource
+
+
+## Train
+#
+lmtask_trainer_hf_train_resource:
+  generator_resource: 'instance: lmtask_llama_instruct_resource'
+
+
+## Trained inference model
+sdoh_lm_sft_resource:
+  class_name: zensols.lmtask.llama.LlamaGeneratorResource
+  #model_desc: LlaMA 3.1 8B Instruct trained on the SDoH MIMIC-III dataset.
+  model_desc: Fine-tuned ${lmtask_trainer_default:source_model}
+  model_args: 'instance: lmtask_llama_model_args'
+
+sdoh_lm_sft_generator:
+  class_name: ${lmtask_llama_instruct_generator:class_name}
+  generate_params: ${lmtask_llama_instruct_generator:generate_params}
+  # ConfigurationParser ${} substitution does not work here; copy verbatim
+  replacements:
+    - ['<\|begin_of_text\|>', '']
+    - ['<\|end_of_text\|>', '']
+
+sdoh_lm_task_sft_sdoh:
+  resource: 'instance: lmtask_llama_instruct_resource'

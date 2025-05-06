@@ -1,0 +1,135 @@
+# @meta {author: 'Paul Landes'}
+# @meta {desc: 'Lituiev et al. (2023) SDoH NER Models', date: '2024-11-16'}
+
+
+## Natural language parser
+#
+# silence version incompatibilities (tested for same output on corpus)
+sdoh_ner_silencer:
+  class_name: zensols.util.warn.WarningSilencer
+  filters:
+    - category: UserWarning
+      message: "^\\[W\\d+\\] Model 'en_sdoh_bow'.*was trained.*"
+    - category: sklearn.exceptions.InconsistentVersionWarning
+      message: "^Trying to unpickle estimator Tfidf(?:Transformer|Vectorizer) from version.*"
+    - category: sklearn.exceptions.InconsistentVersionWarning
+      message: "^Trying to unpickle estimator LogisticRegression from version.*"
+    - category: UserWarning
+      message: "^Your stop_words may be inconsistent with your preprocessing. Tokenizing the stop words"
+
+# the sdoh parser creates SDoH tags as entities, which has a name collision
+# with medical entities
+sdoh_ner_cp_feature_token_container_decorator:
+  class_name: zensols.nlp.decorate.CopyFeatureTokenContainerDecorator
+  feature_ids:
+    - [ent, sdoh]
+    - [ent_, sdoh_]
+
+sdoh_nera_rm_feature_token_container_decorator:
+  class_name: zensols.nlp.decorate.RemoveFeatureTokenContainerDecorator
+  exclude_feature_ids: 'set: ent, ent_'
+
+# a new doc parser just for the spaCy SDoH NER model
+sdoh_ner_doc_spacy_parser:
+  class_name: zensols.sdoh.lituievner.SdohFeatureDocumentParser
+  lang: en
+  model_name: en_sdoh_bow
+  doc_class: 'class: zensols.deepnlp.classify.multilabel.MultiLabelFeatureDocument'
+  token_normalizer: 'instance: map_filter_token_normalizer'
+  document_decorators: >-
+    instance: tuple:
+      sdoh_ner_cp_feature_token_container_decorator,
+      sdoh_nera_rm_feature_token_container_decorator
+  token_feature_ids: 'set: ent, ent_'
+
+# a decorator is used just fro the warning silencer
+sdoh_ner_doc_parser:
+  class_name: zensols.nlp.DecoratedFeatureDocumentParser
+  delegate: 'instance: sdoh_ner_doc_spacy_parser'
+  silencer: 'instance: sdoh_ner_silencer'
+  token_feature_ids: 'set: sdoh, sdoh_'
+
+# adds both biomedical ScispaCy and MedCAT features (assume medparser.yml source before this)
+mednlp_combine_biomed_medcat_doc_parser:
+  source_parsers: >-
+    instance: list:
+      mednlp_combine_biomed_doc_parser,
+      mednlp_combine_medcat_doc_parser,
+      sdoh_ner_doc_parser
+  overwrite_features: ${sdoh_ner_doc_parser:token_feature_ids}
+  overwrite_nones: true
+  token_feature_ids: >-
+    eval({'import': ['zensols.nlp as n', 'zensols.mednlp as m']}):
+      (n.FeatureToken.FEATURE_IDS | m.MedicalFeatureToken.FEATURE_IDS | {'medent', 'sdoh', 'sdoh_'})
+
+
+## Vectorization
+#
+sdoh_ner_spacy_feature_vectorizer:
+  class_name: zensols.sdoh.lituievner.SdohSpacyFeatureVectorizer
+  feature_id: sdoh_
+  description: social determinants of health
+  torch_config: 'instance: gpu_torch_config'
+  model: >-
+    call({'param': {'attribute': 'model'}}): sdoh_ner_doc_spacy_parser
+  second_level: false
+
+# sdoh_ner_count_feature_vectorizer:
+#   class_name: zensols.deepnlp.vectorize.CountEnumContainerFeatureVectorizer
+#   feature_id: sdoh_count
+#   encode_transformed: false
+#   decoded_feature_ids: ${sdoh_ner_doc_parser:token_feature_ids}
+
+language_vectorizer_manager:
+  token_feature_ids: ${mednlp_combine_biomed_medcat_doc_parser:token_feature_ids}
+  configured_spacy_vectorizers: >-
+    instance: tuple:
+      ner_spacy_feature_vectorizer,
+      dep_spacy_feature_vectorizer,
+      pos_spacy_feature_vectorizer,
+      medent_spacy_feature_vectorizer,
+      sdoh_ner_spacy_feature_vectorizer
+  configured_vectorizers:
+    - sdoh_cuidesc_feature_vectorizer
+    - sdoh_cuidesc_expander_vectorizer
+    - count_feature_vectorizer
+    - enum_feature_vectorizer
+    - stats_feature_vectorizer
+    - depth_token_feature_vectorizer
+    - glove_50_feature_vectorizer
+    - glove_300_feature_vectorizer
+    - word2vec_300_feature_vectorizer
+    - fasttext_news_300_feature_vectorizer
+    - fasttext_crawl_300_feature_vectorizer
+    - transformer_trainable_feature_vectorizer
+    - transformer_fixed_feature_vectorizer
+    - transformer_sent_trainable_feature_vectorizer
+    - transformer_sent_fixed_feature_vectorizer
+
+
+
+## Batch
+#
+# sdoh_ner_batch_mappings:
+#   manager_mappings:
+#     - vectorizer_manager_name: sdoh_ner_vectorizer_manager
+#       fields:
+#         - attr: sdoh_counts
+#           feature_id: sdoh_count
+#           is_agg: true
+#           attr_access: doc
+
+# batch_dir_stash:
+#   groups: >-
+#     eval: (
+#        set('labels'.split()),
+#        set('enums stats counts dependencies'.split()),
+#        set('sdoh_counts'.split()),
+#        set('transformer_trainable_embedding'.split()))
+
+# sdoh_batch_mappings:
+#   batch_feature_mapping_adds:
+#     - 'dataclass(zensols.deeplearn.batch.BatchFeatureMapping): classify_label_batch_mappings'
+#     - 'dataclass(zensols.deeplearn.batch.BatchFeatureMapping): lang_batch_mappings'
+#     - 'dataclass(zensols.deeplearn.batch.BatchFeatureMapping): sdoh_ner_batch_mappings'
+#   field_keep: [labels, counts, stats, enums, dependencies, sdoh_counts, transformer_trainable_embedding]

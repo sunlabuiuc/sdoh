@@ -1,0 +1,32 @@
+## third party frameworks
+# inference
+torch==2.2.2
+transformers==4.48.3
+bitsandbytes==0.42.0
+# parsing
+partial-json-parser==0.2.1.1.post5
+# training
+datasets==2.21.0
+accelerate==0.34.2
+peft==0.14.0
+trl==0.8.6
+xformers==0.0.25.post1
+# clinical (mednlp)
+pyrush==1.0.9
+zensols.mimic==1.8.0
+## framework
+zensols.util==1.15.6
+zensols.db==1.4.0
+zensols.nlp==1.12.1
+# inference
+zensols.deeplearn==1.13.8
+zensols.deepnlp==1.17.2
+# language model
+zensols.lmtask~=0.0.1
+## models
+https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.6.0/en_core_web_sm-3.6.0-py3-none-any.whl
+https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.6.0/en_core_web_md-3.6.0-py3-none-any.whl
+https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.5.3/en_core_sci_md-0.5.3.tar.gz
+https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.5.3/en_ner_bionlp13cg_md-0.5.3.tar.gz
+# tools
+zensols.rend

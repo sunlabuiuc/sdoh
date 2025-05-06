@@ -1,0 +1,243 @@
+#!/bin/bash
+
+#@meta {author: 'Paul Landes'}
+#@meta {desc: "automate tests", date: "2025-02-08"}
+
+PROG=$(basename $0)
+DRYRUN=0
+USAGE="\
+usage: $PROG fewshot <mimic|synthetic|mimthetic> [model] [lm|lmsdohcui]
+       $PROG train <mimic|synthetic|mimthetic> [model] [lm|lmsdohcui]
+       $PROG test <mimic|synthetic|mimthetic> [model] [lm|lmsdohcui]
+       $PROG binary[cv|abl]
+       $PROG multilabelabl <mimic|synthetic|mimthetic>
+       $PROG <models|testall>
+       $PROG prod
+       $PROG -h/--help
+"
+
+# log message
+function log() {
+    msg=$1 ; shift
+    echo "$PROG: $msg"
+}
+
+# log message with separator
+function prhead() {
+    echo "--------------------${1}:"
+}
+
+# fail out of the program with an error message
+function bail() {
+    msg=$1 ; shift
+    usage=$1 ; shift
+    echo "$PROG: error: $msg" > /dev/stderr
+    if [ ! -z "$usage" ] ; then
+	printf "$USAGE" > /dev/stderr
+    fi
+    exit 1
+}
+
+# make sure the last command ran was successful and fail otherwise
+function assert_success() {
+    ret=$1 ; shift
+    if [ $ret -ne 0 ] ; then
+	bail "last command failed"
+    fi
+}
+
+function map_model() {
+    model=$1 ; shift
+    case $model in
+	llamsm|"")
+	    model_id=""
+	    ;;
+	llamlg)
+	    model_id="meta-llama/Llama-3.3-70B-Instruct"
+	    ;;
+	medllama)
+	    # MedLlama
+	    model_id="ProbeMedicalYonseiMAILab/medllama3-v20"
+	    ;;
+	openbio)
+	    # OpenBioLLM
+	    model_id="aaditya/Llama3-OpenBioLLM-70B"
+	    ;;
+	*)
+	    bail "unknown model: '${model}'"
+	    ;;
+    esac
+}
+
+# translate command-line arguments into environment variables
+function parse_args() {
+    action=$1 ; shift
+    dataset=$1 ; shift
+    model=$1 ; shift
+    feattype=$1 ; shift
+    confname=$1 ; shift
+    override=
+    map_model $model
+    [ -z "$feattype" ] && feattype="lm"
+    [ -z "$action" ] && bail "missing action" 1
+    [ -z "$dataset" ] && bail "missing dataset parameter" 1
+    [ "$dataset" != "mimic" -a "$dataset" != "synthetic" -a "$dataset" != "mimthetic" ] && bail "unknown dataset: $dataset"
+    [ "$feattype" != "lm" -a "$feattype" != "lmsdohcui" ] && bail "unknown feature type: ${feattype}"
+    [ -z "$confname" ] && confname='model'
+    if [ ! -z "$model_id" ] ; then
+	override="lmtask_trainer_default.source_model=${model_id}"
+        override="${override},lmtask_llama_instruct_resource.model_id=${model_id}"
+    fi
+    override="--override=${override}${override:+,}sdoh_default.label=${dataset}"
+    override="${override},sdoh_lm_default.feature_hint_type=${feattype}"
+    args="-c etc/${confname}.conf $override"
+}
+
+# run the harness script
+function run_py_harness() {
+    cmd="./harness.py $args"
+    # remove config cache (needed when using --override)
+    rm -f data/app-config.dat
+    echo ${cmd} $@
+    if [ $DRYRUN -eq 0 ] ; then
+	${cmd} $@
+    fi
+    assert_success $?
+}
+
+# actions
+function fewshot() {
+    prhead "predicting with fewshot learning on dataset ${dataset}"
+    run_py_harness fewshot --clear
+}
+
+function train() {
+    prhead "training on dataset ${dataset}"
+    run_py_harness trainlm
+}
+
+function test() {
+    prhead "prediction on test dataset ${dataset}"
+    run_py_harness testlm --clear
+}
+
+# create a script to run all tests
+function test_all() {
+    cmd="./${PROG}"
+    datasets="mimic synthetic mimthetic"
+    models="llamsm llamlg medllama openbio"
+    feattypes="lm lmsdohcui"
+    printf "#!/bin/bash\n\n# train models\n"
+    for dataset in $datasets ; do
+	for model in $models ; do
+	    for feattype in $feattypes ; do
+		printf "$cmd train $dataset $model $feattype\n"
+	    done
+	done
+    done
+
+    printf "\n# inference models\n"
+    for testtype in fewshot test ; do
+	for dataset in $datasets ; do
+	    for model in $models ; do
+		for feattype in $feattypes ; do
+		    printf "$cmd $testtype $dataset $model $feattype\n"
+		done
+	    done
+	done
+    done
+}
+
+function run_abl() {
+    model=$1 ; shift
+    dataset=$1 ; shift
+    prhead "running ${model} ablation on ${dataset}"
+    echo src/bin/run-ablation.py ${model} -d ${dataset}
+    src/bin/run-ablation.py ${model} -d ${dataset}
+}
+
+function binary_ablation() {
+    action=$1 ; shift
+    dataset=$1 ; shift
+    # binary only makes sense on the mimic dataset (has non-sdohs)
+    run_abl binary ${dataset}
+}
+
+function multilabel_ablation() {
+    action=$1 ; shift
+    dataset=$1 ; shift
+    run_abl multilabel ${dataset}
+}
+
+function run_binary() {
+    conf=$1 ; shift
+    if [ ! -d ${HOME}/.cache/zensols/deepnlp ] ; then
+	override="${override}${override:+,}batch_stash.workers=1"
+    fi
+    if [ ! -z "$override" ] ; then
+	args="--override '${override}'"
+    fi
+    run_py_harness -c etc/${conf}.conf $@
+}
+
+function binary() {
+    prhead "train and test the binary classifier"
+    run_binary binary traintest -p
+}
+
+function binarycv() {
+    prhead "cross validate the binary classifier"
+    run_binary crossfold-binary cvalrun --repeats 50
+}
+
+function prod() {
+    prhead "create the multi-label classifier production version model"
+    args="-c etc/multilabel-prod.conf"
+    run_py_harness trainprod -p
+
+    prhead "create the binary classifier production version model"
+    args="-c etc/binary-prod.conf"
+    run_py_harness trainprod -p
+}
+
+# run one of the actions (subcommand)
+function ce_main() {
+    action=$1
+    case $action in
+	fewshot|train|test)
+	    parse_args $@
+	    $action $@
+	    ;;
+	binary|binarycv)
+	    $action $@
+	    ;;
+	multilabelabl)
+	    parse_args $@
+	    multilabel_ablation $@
+	    ;;
+	binaryabl)
+	    parse_args $@
+	    binary_ablation $@
+	    ;;
+	prod)
+	    prod $@
+	    ;;
+	models)
+	    printf "llamsm\nllamlg\nmedllama\nopenbio\n"
+	    ;;
+	testall)
+	    test_all $@
+	    ;;
+	-h|"")
+	    printf "$USAGE" > /dev/stderr
+	    exit 1
+	    ;;
+	*)
+	    parse_args $action mimic
+	    shift
+	    run_py_harness $@ $action
+	    ;;
+    esac
+}
+
+ce_main $@

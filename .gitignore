@@ -1,0 +1,8 @@
+*.pyc
+*_flymake.py
+/*.log
+/target
+/download
+/data
+/cache
+/log

@@ -1,0 +1,11 @@
+#@meta {author: "landes"}
+#@meta {desc: "cross validation config", date: "2025-02-26"}
+
+
+cross_fold_split_key_container:
+  n_folds: 10
+  partition_attr: labels
+  stratified_write: true
+
+cross_fold_batch_stash:
+  batch_feature_mappings: 'dataclass(zensols.deeplearn.batch.ConfigBatchFeatureMapping): sdoh_batch_mappings'
