@@ -1,8 +1,5 @@
 # Social Determinants of Health Prediction
 
-[![PyPI][pypi-badge]][pypi-link]
-[![Python 3.11][python311-badge]][python311-link]
-
 A model that predicts Social Determinants of Health.
 
 
@@ -124,8 +121,4 @@ Copyright (c) 2024 Paul Landes
 
 
 <!-- links -->
-[pypi]: https://pypi.org/project/zensols.sdoh/
-[pypi-link]: https://pypi.python.org/pypi/zensols.sdoh
-[pypi-badge]: https://img.shields.io/pypi/v/zensols.sdoh.svg
-
 [source model]: https://github.com/BCHSI/social-determinants-of-health-clbp
