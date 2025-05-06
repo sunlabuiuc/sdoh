@@ -10,13 +10,6 @@ The [API reference](https://sunlabuiuc.github.io/sdoh/api.html) is also
 available.
 
 
-## Obtaining
-
-The library can be installed with pip from the [pypi] repository:
-```bash
-pip3 install zensols.sdoh
-```
-
 ## Setup
 
 1. Create a new Conda environment: `conda env create -f src/python/environment-lock.yml`
