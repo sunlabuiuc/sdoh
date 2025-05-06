@@ -1,17 +1,15 @@
 # Social Determinants of Health Prediction
 
 [![PyPI][pypi-badge]][pypi-link]
-[![Python 3.10][python3100-badge]][python3100-link]
 [![Python 3.11][python311-badge]][python311-link]
-[![Build Status][build-badge]][build-link]
 
 A model that predicts Social Determinants of Health.
 
 
 ## Documentation
 
-See the [full documentation](https://plandes.github.io/sdoh/index.html).
-The [API reference](https://plandes.github.io/sdoh/api.html) is also
+See the [full documentation](https://sunlabuiuc.github.io/sdoh/index.html).
+The [API reference](https://sunlabuiuc.github.io/sdoh/api.html) is also
 available.
 
 
@@ -129,11 +127,5 @@ Copyright (c) 2024 Paul Landes
 [pypi]: https://pypi.org/project/zensols.sdoh/
 [pypi-link]: https://pypi.python.org/pypi/zensols.sdoh
 [pypi-badge]: https://img.shields.io/pypi/v/zensols.sdoh.svg
-[python3100-badge]: https://img.shields.io/badge/python-3.10-blue.svg
-[python3100-link]: https://www.python.org/downloads/release/python-3100
-[python311-badge]: https://img.shields.io/badge/python-3.11-blue.svg
-[python311-link]: https://www.python.org/downloads/release/python-3110
-[build-badge]: https://github.com/plandes/sdoh/workflows/CI/badge.svg
-[build-link]: https://github.com/plandes/sdoh/actions
 
 [source model]: https://github.com/BCHSI/social-determinants-of-health-clbp
