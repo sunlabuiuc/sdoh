@@ -12,6 +12,7 @@ PY_DEP_POST_DEPS +=	lituievdeps traindeps
 ADD_CLEAN +=		log
 ADD_CLEAN_ALL +=	data
 CLEAN_ALL_DEPS +=	cleanpaper
+GIT_USER =		sunlabuiuc
 
 
 ## Project
