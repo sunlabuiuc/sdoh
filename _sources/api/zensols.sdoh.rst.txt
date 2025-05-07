@@ -1,0 +1,69 @@
+zensols.sdoh package
+====================
+
+Submodules
+----------
+
+zensols.sdoh.app module
+-----------------------
+
+.. automodule:: zensols.sdoh.app
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+zensols.sdoh.binlabel module
+----------------------------
+
+.. automodule:: zensols.sdoh.binlabel
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+zensols.sdoh.cli module
+-----------------------
+
+.. automodule:: zensols.sdoh.cli
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+zensols.sdoh.corpus module
+--------------------------
+
+.. automodule:: zensols.sdoh.corpus
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+zensols.sdoh.facade module
+--------------------------
+
+.. automodule:: zensols.sdoh.facade
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+zensols.sdoh.lituievner module
+------------------------------
+
+.. automodule:: zensols.sdoh.lituievner
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+zensols.sdoh.lm module
+----------------------
+
+.. automodule:: zensols.sdoh.lm
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: zensols.sdoh
+   :members:
+   :undoc-members:
+   :show-inheritance:
