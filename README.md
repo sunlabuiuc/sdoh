@@ -1,6 +1,8 @@
 # Social Determinants of Health Prediction
 
-A model that predicts Social Determinants of Health.
+A model that predicts Social Determinants of Health for the paper "Integration
+of Large Language Models and Traditional Deep Learning for Social Determinants
+of Health Prediction" (see [arXiv]).
 
 
 ## Documentation
@@ -116,3 +118,4 @@ Copyright (c) 2024 Paul Landes
 <!-- links -->
 [corpus]: https://physionet.org/content/annotation-dataset-sdoh/1.0.1/
 [source model]: https://github.com/BCHSI/social-determinants-of-health-clbp
+[arXiv]: http://arxiv.org/abs/2505.04655
