@@ -112,7 +112,7 @@ Contributions as pull requests, feedback and any input is welcome.
 
 [MIT License](LICENSE.md)
 
-Copyright (c) 2024 Paul Landes
+Copyright (c) 2025 Paul Landes
 
 
 <!-- links -->
