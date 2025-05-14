@@ -31,7 +31,7 @@ dependencies:
       - zensols.deeplearn==1.13.8
       - zensols.deepnlp==1.17.2
       # language model
-      zensols.lmtask~=0.0.1
+      - zensols.lmtask~=0.0.1
       ## models
       - https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.6.0/en_core_web_sm-3.6.0-py3-none-any.whl
       - https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.6.0/en_core_web_md-3.6.0-py3-none-any.whl
